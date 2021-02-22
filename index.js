@@ -1,9 +1,24 @@
+//UPTIME
+const express = require("express")
+const app = express()
+const port = 3000
+
+app.get("/", (request, response) => { 
+  console.log("Ping Received");
+  response.sendStatus(200);
+  //response.sendFile(__dirname + '/views/index.html');
+});
+
+app.listen(port, () => console.log(`Bot app listening to ${port}!`))
+
+const Discord = require('discord.js');
 const { CommandoClient } = require("discord.js-commando");
 const { Structures } = require("discord.js");
-const { MessageEmbed } = require("discord.js");
+const { MessageAttachment } = require("discord.js");
 const { owner, prefix, token } = require('./config.json');
 const { badwords } = require("./badwords.json") 
 const path = require("path");
+const Canvas = require('canvas');
 
 const client = new CommandoClient({
   commandPrefix: prefix,
@@ -87,7 +102,7 @@ client.on('message', async message => {
 //antispam
 const usersMap = new Map();
 const LIMIT = 7;
-const TIME = 600000;
+const TIME = 3.6e+6;
 const DIFF = 5000;
 
 client.on('message', async(message) => {
@@ -119,9 +134,13 @@ client.on('message', async(message) => {
                 if(!muterole) {
                     try{
                         muterole = await message.guild.roles.create({
-                            name : "Muted",
-                            permissions: []
+                            data: {
+                              name: 'Muted',
+                              color: 'RED',
+                            },
+                            reason: 'Needed a Mute Role to Mute a User'
                         })
+                        
                         message.guild.channels.cache.forEach(async (channel, id) => {
                             await channel.createOverwrite(muterole, {
                                 SEND_MESSAGES: false,
@@ -157,5 +176,56 @@ client.on('message', async(message) => {
         });
     }
 })
+
+//welcome message
+
+client.on('message', async message => {
+  if(message.content === `${prefix}join`) {
+    
+    // Create a canvas and access the 2d context
+    const canvas = Canvas.createCanvas(700, 250)
+    const ctx = canvas.getContext('2d')
+
+    // Load the background image and draw it to the canvas
+    const background = await Canvas.loadImage(
+      path.join(__dirname, '/galaxy.png')
+    )
+    let x = 0
+    let y = 0
+    ctx.drawImage(background, x, y)
+
+    // Load the user's profile picture and draw it
+    const pfp = await Canvas.loadImage(
+      message.member.user.displayAvatarURL({
+        format: 'png',
+      })
+    )
+    x = canvas.width / 2 - pfp.width / 2
+    y = 25
+    ctx.drawImage(pfp, x, y)
+
+    // Display user text
+    ctx.fillStyle = '#ffffff' // White text
+    ctx.font = '35px sans-serif'
+    let text = `Welcome ${message.member.user.tag}!`
+    x = canvas.width / 2 - ctx.measureText(text).width / 2
+    ctx.fillText(text, x, 75 + pfp.height)
+    
+    // Attach the image to a message and send it
+    const attachment = new MessageAttachment(canvas.toBuffer())
+
+    message.channel.send(attachment)
+
+  }
+})
+
+client.on("guildMemberAdd", member => {
+    const ChannelID = '813026692695064615'
+    const message = `Welcome <@${member.id}`
+    const channel = member.guild.channels.cache.get(ChannelID)
+
+    channel.send(message)
+  });
+
 
 client.login(token);
